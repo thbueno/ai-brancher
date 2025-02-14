@@ -1,7 +1,9 @@
 import { Doc, Id } from "@/convex/_generated/dataModel";
 import { NavigationContext } from "@/lib/NavigationProvider";
+import { TrashIcon } from "@radix-ui/react-icons";
 import { useRouter } from "next/navigation";
 import { use } from "react";
+import { Button } from "./ui/button";
 
 export default function ChatRow({
   chat,
@@ -25,7 +27,20 @@ export default function ChatRow({
       onClick={handleClick}
     >
       <div className="p-4">
-        <div className="flex justify-between items-start">Chat</div>
+        <div className="flex justify-between items-start">
+          Chat
+          <Button
+            variant="ghost"
+            size="icon"
+            className="opacity-0 group-hover:opacity-100 -mr-2 -mt-2 ml-2 transition-opacity duration-200"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(chat._id);
+            }}
+          >
+            <TrashIcon className="h-4 w-4 text-gray-400 hover:text-red-500 transition-colors" />
+          </Button>
+        </div>
       </div>
     </div>
   );
