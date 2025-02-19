@@ -7,6 +7,7 @@ const initialiseModel = () => {
     maxTokens: undefined,
     timeout: undefined,
     maxRetries: 2,
+    streaming: true,
     apiKey: process.env.OPENAI_API_KEY,
   });
 
