@@ -1,3 +1,5 @@
+import { ChatPromptTemplate } from "@langchain/core/prompts";
+import { RunnableSequence } from "@langchain/core/runnables";
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 import { OpenAI } from "@langchain/openai";
 import wxflows from "@wxflows/sdk/langchain";
@@ -44,7 +46,26 @@ const initialiseModel = () => {
         // },
       },
     ],
-  }).bindTools(tools);
+  });
+
+  // Create an agent or chain with the tools
+  const prompt =
+    ChatPromptTemplate.fromTemplate(`Answer the following question using the available tools if necessary:
+      Question: {input}
+      Available tools: {tools}
+      Answer: `);
+
+  // Create a sequence that combines the prompt, tools, and model
+  const chain = RunnableSequence.from([
+    {
+      input: (input) => input,
+      tools: () =>
+        tools.map((tool) => `${tool.name}: ${tool.description}`).join("\n"),
+    },
+    prompt,
+    model,
+    toolNode,
+  ]);
 
   return model;
 };

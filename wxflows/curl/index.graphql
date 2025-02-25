@@ -20,5 +20,5 @@ type User {
 }
 
 type Query {
-  myQuery: Root @rest(endpoint: "https://dummyjson.com/comments")
+  dummyCommentsQuery: Root @rest(endpoint: "https://dummyjson.com/comments")
 }
