@@ -8,6 +8,7 @@ import {
   StreamMessageType,
 } from "@/lib/types";
 import { auth } from "@clerk/nextjs/server";
+import { AIMessage, HumanMessage } from "@langchain/core/messages";
 import { NextResponse } from "next/server";
 
 function sendSSEMessage(
@@ -57,12 +58,34 @@ export async function POST(req: Request) {
           chatId,
           content: newMessage,
         });
+
+        // Convert messages to LangChain format
+        const langChainMessages = [
+          ...messages.map((msg) =>
+            msg.role === "user"
+              ? new HumanMessage(msg.content)
+              : new AIMessage(msg.content)
+          ),
+          new HumanMessage(newMessage),
+        ];
+
+        try {
+        } catch (streamError) {
+          console.error("Error in event stream:", streamError);
+          await sendSSEMessage(writer, {
+            type: StreamMessageType.Error,
+            error:
+              streamError instanceof Error
+                ? streamError.message
+                : "Stream processing failed",
+          });
+        }
       } catch (error) {
-        console.error("Error in chat API:", error);
-        return NextResponse.json(
-          { error: "Failed to process chat request" } as const,
-          { status: 500 }
-        );
+        console.error("Error in stream:", error);
+        await sendSSEMessage(writer, {
+          type: StreamMessageType.Error,
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
       }
     };
 
