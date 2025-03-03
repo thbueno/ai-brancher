@@ -1,5 +1,6 @@
 import { api } from "@/convex/_generated/api";
 import { getConvexClient } from "@/lib/convex";
+import { submitQuestion } from "@/lib/langgraph";
 import {
   ChatRequestBody,
   SSE_DATA_PREFIX,
@@ -70,6 +71,31 @@ export async function POST(req: Request) {
         ];
 
         try {
+          // Create the event stream
+          const eventStream = await submitQuestion(langChainMessages, chatId);
+          // Process the events
+          for await (const event of eventStream) {
+            // console.log("🔄 Event:", event);
+
+            if (event.event === "on_chat_model_stream") {
+              const token = event.data.chunk;
+              if (token) {
+                // Access the text property from the AIMessageChunk
+                const text = token.content.at(0)?.["text"];
+                if (text) {
+                  await sendSSEMessage(writer, {
+                    type: StreamMessageType.Token,
+                    token: text,
+                  });
+                }
+              }
+            } else if (event.event === "on_tool_start") {
+            } else if (event.event === "on_tool_end") {
+            }
+
+            // Send completion message without storing the response
+            await sendSSEMessage(writer, { type: StreamMessageType.Done });
+          }
         } catch (streamError) {
           console.error("Error in event stream:", streamError);
           await sendSSEMessage(writer, {
