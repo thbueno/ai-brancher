@@ -9,7 +9,7 @@ import {
   StreamMessageType,
 } from "@/lib/types";
 import { auth } from "@clerk/nextjs/server";
-import { AIMessage, HumanMessage } from "@langchain/core/messages";
+import { AIMessage, HumanMessage, ToolMessage } from "@langchain/core/messages";
 import { NextResponse } from "next/server";
 
 function sendSSEMessage(
@@ -90,7 +90,19 @@ export async function POST(req: Request) {
                 }
               }
             } else if (event.event === "on_tool_start") {
+              await sendSSEMessage(writer, {
+                type: StreamMessageType.ToolStart,
+                tool: event.name || "unknown",
+                input: event.data.input,
+              });
             } else if (event.event === "on_tool_end") {
+              const toolMessage = new ToolMessage(event.data.output);
+
+              await sendSSEMessage(writer, {
+                type: StreamMessageType.ToolEnd,
+                tool: toolMessage.lc_kwargs.name || "unknown",
+                output: event.data.output,
+              });
             }
 
             // Send completion message without storing the response
@@ -112,6 +124,12 @@ export async function POST(req: Request) {
           type: StreamMessageType.Error,
           error: error instanceof Error ? error.message : "Unknown error",
         });
+      } finally {
+        try {
+          await writer.close();
+        } catch (closeError) {
+          console.error("Error closing writer:", closeError);
+        }
       }
     };
 
