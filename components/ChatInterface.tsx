@@ -1,7 +1,8 @@
 "use client";
 
 import { Doc, Id } from "@/convex/_generated/dataModel";
-import { ChatRequestBody } from "@/lib/types";
+import { createSSEParser } from "@/lib/createSSEParser";
+import { ChatRequestBody, StreamMessageType } from "@/lib/types";
 import { ArrowRight } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "./ui/button";
@@ -24,6 +25,21 @@ export default function ChatInterface({
     input: unknown;
   } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const processStream = async (
+    reader: ReadableStreamDefaultReader<Uint8Array>,
+    onChunk: (chunk: string) => Promise<void>
+  ) => {
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        await onChunk(new TextDecoder().decode(value));
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  };
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -73,6 +89,31 @@ export default function ChatInterface({
 
       if (!response.ok) throw new Error(await response.text());
       if (!response.body) throw new Error("No response body available");
+
+      // --- Handle the Stream --
+
+      // Create SSE parser and stream reader
+      const parser = createSSEParser();
+      const reader = response.body.getReader();
+
+      // Process the stream chunks
+      await processStream(reader, async (chunk) => {
+        // Parse SSE messages from the chunk
+        const messages = parser.parse(chunk);
+      });
+
+      // Handle each message based on its type
+      for (const message of messages) {
+        switch (message.type) {
+          case StreamMessageType.Token:
+            // Handle streaming tokens (normal text response)
+            if ("token" in message) {
+              fullResponse += message.token;
+              setStreamedResponse(fullResponse);
+            }
+            break;
+        }
+      }
     } catch (error) {
       // Handle any errors during streaming
       console.error("Error sending message:", error);
