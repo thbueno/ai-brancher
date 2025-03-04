@@ -45,6 +45,12 @@ export default function ChatInterface({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streamedResponse]);
 
+  const formatTerminalOutput = (
+    tool: string,
+    input: unknown,
+    output: unknown
+  ) => {};
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedInput = input.trim();
