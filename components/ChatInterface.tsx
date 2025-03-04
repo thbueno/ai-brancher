@@ -100,20 +100,19 @@ export default function ChatInterface({
       await processStream(reader, async (chunk) => {
         // Parse SSE messages from the chunk
         const messages = parser.parse(chunk);
-      });
-
-      // Handle each message based on its type
-      for (const message of messages) {
-        switch (message.type) {
-          case StreamMessageType.Token:
-            // Handle streaming tokens (normal text response)
-            if ("token" in message) {
-              fullResponse += message.token;
-              setStreamedResponse(fullResponse);
-            }
-            break;
+        // Handle each message based on its type
+        for (const message of messages) {
+          switch (message.type) {
+            case StreamMessageType.Token:
+              // Handle streaming tokens (normal text response)
+              if ("token" in message) {
+                fullResponse += message.token;
+                setStreamedResponse(fullResponse);
+              }
+              break;
+          }
         }
-      }
+      });
     } catch (error) {
       // Handle any errors during streaming
       console.error("Error sending message:", error);
