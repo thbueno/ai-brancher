@@ -132,6 +132,27 @@ export default function ChatInterface({
                 setStreamedResponse(fullResponse);
               }
               break;
+
+            case StreamMessageType.ToolEnd:
+              // Handle completion of tool execution
+              if ("tool" in message && currentTool) {
+                // Replace the "Processing..." message with actual output
+                const lastTerminalIndex = fullResponse.lastIndexOf(
+                  '<div class="bg-[#1e1e1e]'
+                );
+                if (lastTerminalIndex !== -1) {
+                  fullResponse =
+                    fullResponse.substring(0, lastTerminalIndex) +
+                    formatTerminalOutput(
+                      message.tool,
+                      currentTool.input,
+                      message.output
+                    );
+                  setStreamedResponse(fullResponse);
+                }
+                setCurrentTool(null);
+              }
+              break;
           }
         }
       });
