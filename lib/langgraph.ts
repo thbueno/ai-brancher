@@ -1,6 +1,6 @@
 import { RunnableSequence } from "@langchain/core/runnables";
 import { ToolNode } from "@langchain/langgraph/prebuilt";
-import { OpenAI } from "@langchain/openai";
+import { ChatOpenAI } from "@langchain/openai";
 import wxflows from "@wxflows/sdk/langchain";
 
 import SYSTEM_MESSAGE from "@/constants/systemMessage";
@@ -44,7 +44,7 @@ const tools = await toolClient.lcTools;
 const toolNode = new ToolNode(tools);
 
 const initialiseModel = () => {
-  const model = new OpenAI({
+  const model = new ChatOpenAI({
     model: "gpt-4o-mini",
     temperature: 0.7,
     maxTokens: 4096,
@@ -205,7 +205,7 @@ export async function submitQuestion(messages: BaseMessage[], chatId: string) {
     {
       version: "v2",
       configurable: {
-        threadId: chatId,
+        thread_id: chatId,
       },
       streamMode: "messages",
       runId: chatId,
