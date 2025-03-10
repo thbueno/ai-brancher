@@ -23,7 +23,7 @@ const formatMessage = (content: string): string => {
   return content.trim();
 };
 
-export function MessageBubble({ content, isUser }: MessageBubbleProps) {
+export default function MessageBubble({ content, isUser }: MessageBubbleProps) {
   const { user } = useUser();
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>

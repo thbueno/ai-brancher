@@ -7,6 +7,7 @@ import { createSSEParser } from "@/lib/createSSEParser";
 import { ChatRequestBody, StreamMessageType } from "@/lib/types";
 import { ArrowRight } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import MessageBubble from "./MessageBubble";
 import { Button } from "./ui/button";
 
 interface ChatInterfaceProps {
@@ -230,14 +231,20 @@ export default function ChatInterface({
     <main className="flex flex-col h-[calc(100vh-theme(spacing.14))]">
       {/* messages box */}
       <section className="flex-1 overflow-y-auto bg-gray-50 p-2 md:p-0">
-        <div>
-          {messages.map((message) => (
-            <div key={message._id} className="flex justify-start">
-              {message.content}
-            </div>
+        <div className="max-w-4xl mx-auto p-4 space-y-3">
+          {/* Messages */}
+          {messages?.map((message: Doc<"messages">) => (
+            <MessageBubble
+              key={message._id}
+              content={message.content}
+              isUser={message.role === "user"}
+            />
           ))}
-          <div ref={messagesEndRef} />
+
+          {streamedResponse && <MessageBubble content={streamedResponse} />}
         </div>
+        {/* Last Message */}
+        <div ref={messagesEndRef} />
       </section>
       {/* footer input*/}
       <footer className="border-t bg-white p-4">
