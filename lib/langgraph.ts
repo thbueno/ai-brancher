@@ -119,26 +119,69 @@ function shouldContinue(state: typeof MessagesAnnotation.State) {
   return END;
 }
 
+function addCachingHeaders(messages: BaseMessage[]): BaseMessage[] {
+  if (!messages.length) return messages;
+
+  // Create a copy of messages to avoid mutating the original
+  const cachedMessages = [...messages];
+
+  // Helper to add cache control
+  const addCache = (message: BaseMessage) => {
+    // For GPT-4o-mini, we need to format the content as an array with cache control
+    if (typeof message.content === 'string') {
+      message.content = [
+        {
+          type: "text",
+          text: message.content,
+          // Use OpenAI's caching mechanism
+          cache_control: { type: "ephemeral" },
+        },
+      ];
+    }
+  };
+
+  // Cache the last message
+  addCache(cachedMessages.at(-1)!);
+
+  // Find and cache the second-to-last human message
+  let humanCount = 0;
+  for (let i = cachedMessages.length - 1; i >= 0; i--) {
+    if (cachedMessages[i] instanceof HumanMessage) {
+      humanCount++;
+      if (humanCount === 2) {
+        addCache(cachedMessages[i]);
+        break;
+      }
+    }
+  }
+
+  return cachedMessages;
+}
+
 const createWorkflow = () => {
   const model = initialiseModel();
 
   const stateGraph = new StateGraph(MessagesAnnotation)
     .addNode("agent", async (state) => {
-      // Create the system message content(the context prompt master)
+      // Create the system message content
       const systemContent = SYSTEM_MESSAGE;
 
       // Create the prompt template with system message and messages placeholder
       const promptTemplate = ChatPromptTemplate.fromMessages([
         new SystemMessage(systemContent, {
-          cache_control: { type: "ephemeral" }, //set a cache control breakpoint for the system message
+          cache_control: { type: "ephemeral" }, // Cache control for system message
         }),
         new MessagesPlaceholder("messages"),
       ]);
+      
       // Trim the messages to manage conversation history
       const trimmedMessages = await trimmer.invoke(state.messages);
-
-      // Format the prompt with the current messages
-      const prompt = await promptTemplate.invoke({ messages: trimmedMessages });
+      
+      // Apply caching to the messages
+      const cachedMessages = addCachingHeaders(trimmedMessages);
+      
+      // Format the prompt with the cached messages
+      const prompt = await promptTemplate.invoke({ messages: cachedMessages });
 
       // Get response from the model
       const response = await model.invoke(prompt);
@@ -153,54 +196,21 @@ const createWorkflow = () => {
   return stateGraph;
 };
 
-function addCachingHeaders(messages: BaseMessage[]): BaseMessage[] {
-  if (!messages.length) return messages;
-
-  // Create a copy of messages to avoid mutating the original
-  const cachedMessages = [...messages];
-
-  // Helper to add cache control
-  const addCache = (message: BaseMessage) => {
-    message.content = [
-      {
-        type: "text",
-        text: message.content as string,
-        cache_control: { type: "ephemeral" },
-      },
-    ];
-  };
-
-  // Cache the last message
-  // console.log("🤑🤑🤑 Caching last message");
-  addCache(cachedMessages.at(-1)!);
-
-  // Find and cache the second-to-last human message
-  let humanCount = 0;
-  for (let i = cachedMessages.length - 1; i >= 0; i--) {
-    if (cachedMessages[i] instanceof HumanMessage) {
-      humanCount++;
-      if (humanCount === 2) {
-        // console.log("🤑🤑🤑 Caching second-to-last human message");
-        addCache(cachedMessages[i]);
-        break;
-      }
-    }
-  }
-
-  return cachedMessages;
-}
-
 export async function submitQuestion(messages: BaseMessage[], chatId: string) {
-  // Create workflow with chatId and onToken callback
+  // Create workflow
   const workflow = createWorkflow();
 
   // Create a checkpoint to save the state of the conversation
   const checkpointer = new MemorySaver();
   const app = workflow.compile({ checkpointer });
 
+  // Apply caching to input messages
+  const cachedMessages = addCachingHeaders(messages);
+
+  // Stream events with cached messages
   const stream = await app.streamEvents(
     {
-      messages,
+      messages: cachedMessages,
     },
     {
       version: "v2",

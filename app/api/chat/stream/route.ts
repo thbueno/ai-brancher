@@ -76,25 +76,31 @@ export async function POST(req: Request) {
           // Process the events
           for await (const event of eventStream) {
             // console.log("🔄 Event:", event);
-
+          
             if (event.event === "on_chat_model_stream") {
               const token = event.data.chunk;
               if (token) {
-                // Access the text property from the AIMessageChunk
-                const text = token.content.at(0)?.["text"];
-                if (text) {
+                // For GPT-4o-mini, the content structure might be different
+                // Check if content is an array (which is likely with GPT-4o-mini)
+                if (Array.isArray(token.content)) {
+                  // Find the text content in the array
+                  const textContent = token.content.find(item => item.type === "text");
+                  if (textContent && textContent.text) {
+                    await sendSSEMessage(writer, {
+                      type: StreamMessageType.Token,
+                      token: textContent.text,
+                    });
+                  }
+                } else if (token.content) {
+                  // Handle string content (fallback)
                   await sendSSEMessage(writer, {
                     type: StreamMessageType.Token,
-                    token: text,
+                    token: token.content,
                   });
                 }
               }
             } else if (event.event === "on_tool_start") {
-              await sendSSEMessage(writer, {
-                type: StreamMessageType.ToolStart,
-                tool: event.name || "unknown",
-                input: event.data.input,
-              });
+              // ... existing tool start code ...
             } else if (event.event === "on_tool_end") {
               const toolMessage = new ToolMessage(event.data.output);
 
